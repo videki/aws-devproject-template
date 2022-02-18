@@ -1,0 +1,159 @@
+---
+
+# aws cloudformation create-stack --stack-name dev-env-devmachine --template-body file://devmachine-baseimage.yaml --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND
+
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Development environment machine template for developers to join to a development project.
+
+Resources:
+
+  DevVpc:
+    Type: "MyOrg::VPC::DevVpc::MODULE"
+    Properties:
+      Env: "dev"
+      VPCName: !Ref "AWS::StackName"
+
+  # S3 Bucket for logs
+  DevMachineImageBuilderLogBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      Comment: Role to be used by instance during image build.
+    Properties:
+      ManagedPolicyArns:
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - Fn::Sub: arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+        Version: "2012-10-17"
+      Path: /executionServiceEC2Role/
+
+  InstanceRoleLoggingPolicy:
+    Type: AWS::IAM::Policy
+    Metadata:
+      Comment: Allows the instance to save log files to an S3 bucket.
+    Properties:
+      PolicyName: DevMachineImageBuilderLogBucketPolicy
+      Roles:
+        - Ref: InstanceRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - s3:PutObject
+            Effect: Allow
+            Resource:
+              - Fn::Sub:
+                  - arn:${AWS::Partition}:s3:::${BUCKET}/*
+                  - BUCKET:
+                      Ref: DevMachineImageBuilderLogBucket
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /executionServiceEC2Role/
+      Roles:
+        - Ref: InstanceRole
+
+  ImageBuilderSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupDescription: Allow access to Image Builder instance.
+        VpcId: !Ref DevVpc.VPC
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 10.0.0.0/0
+
+  AmazonLinux2ImageInfrastructureConfiguration:
+    Type: AWS::ImageBuilder::InfrastructureConfiguration
+    Properties:
+      Name: Amazon-Linux-2-devmachine-base-Infrastructure-Configuration
+      InstanceProfileName:
+        Ref: InstanceProfile
+      Logging:
+        S3Logs:
+          S3BucketName:
+            Ref: DevMachineImageBuilderLogBucket
+      SubnetId: !Ref DevVpc.PublicSubnet0
+      SecurityGroupIds:
+        - !Ref ImageBuilderSecurityGroup
+
+  AmazonLinux2LogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: /aws/imagebuilder/Amazon-Linux-2-devmachine-base
+      RetentionInDays: 3
+
+  DevelopmentToolsComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Name: !Sub "${AWS::StackName} Image - DevTools Component"
+      Platform: Linux
+      Version: '0.0.1'
+      Data: |
+        name: DevTools
+        description: Developer tools - not provided by Cloud9 (like cfn-lint, etc.).
+        schemaVersion: 1.0
+        phases:
+          - name: build
+            steps:
+              - name: InstallCfnLint
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - sudo yum install zsh
+                    - chsh -s /bin/zsh
+                    - sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+                    - sudo pip install cfn-lint
+
+  AmazonLinux2ImageRecipe:
+    Type: AWS::ImageBuilder::ImageRecipe
+    Properties:
+      Name: Amazon-Linux-2-devmachine-base
+      Version: 0.0.1
+      ParentImage:
+        Fn::Sub: arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:image/amazon-linux-2-x86/x.x.x
+      Components:
+        - ComponentArn:
+            Fn::Sub: arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:component/update-linux/x.x.x
+        - ComponentArn: 
+            Fn::GetAtt: [DevelopmentToolsComponent, Arn]
+            
+  AmazonLinux2DevMachineBase:
+    Type: AWS::ImageBuilder::Image
+    Properties:
+      ImageRecipeArn:
+        Ref: AmazonLinux2ImageRecipe
+      InfrastructureConfigurationArn:
+        Ref: AmazonLinux2ImageInfrastructureConfiguration
+
+  AmazonLinux2DevMachineBaseParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Image Id for Amazon Linux 2 developer machine
+      Name: /test/images/AmazonLinux2-DevMachineBase
+      Type: String
+      Value:
+        Fn::GetAtt: [AmazonLinux2DevMachineBase, ImageId]
+
+Outputs:
+  DevMachineImageId:
+    Description: Developer machine image id
+    Value: 
+      Fn::GetAtt: [AmazonLinux2DevMachineBase, ImageId]
+    Export:
+      Name: !Sub "${AWS::StackName}-imageid"
