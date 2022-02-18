@@ -1,0 +1,254 @@
+{
+    "typeName": "MyOrg::VPC::DevVpc::MODULE",
+    "description": "Schema for Module Fragment of type MyOrg::VPC::DevVpc::MODULE",
+    "properties": {
+        "Parameters": {
+            "type": "object",
+            "properties": {
+                "Env": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string"
+                        },
+                        "Description": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "Type",
+                        "Description"
+                    ],
+                    "description": "Please specify the target Env. Used for tagging and resource names. Mandatory LOWER CASE."
+                },
+                "VPCName": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string"
+                        },
+                        "Description": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "Type",
+                        "Description"
+                    ],
+                    "description": "The name of the VPC being created."
+                }
+            }
+        },
+        "Resources": {
+            "properties": {
+                "VPC": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::VPC"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "PublicSubnet0": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::Subnet"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "PrivateSubnet0": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::Subnet"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "InternetGateway": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::InternetGateway"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "GatewayToInternet": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::VPCGatewayAttachment"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "PublicRouteTable": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::RouteTable"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "PublicRoute": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::Route"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "PublicSubnetRouteTableAssociation0": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::SubnetRouteTableAssociation"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "PublicNetworkAcl": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::NetworkAcl"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "InboundHTTPPublicNetworkAclEntry": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::NetworkAclEntry"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "OutboundPublicNetworkAclEntry": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::NetworkAclEntry"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "PublicSubnetNetworkAclAssociation0": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::SubnetNetworkAclAssociation"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "ElasticIP0": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::EIP"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "NATGateway0": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::NatGateway"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "PrivateRouteTable0": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::RouteTable"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "PrivateRouteToInternet0": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::Route"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                },
+                "PrivateSubnetRouteTableAssociation0": {
+                    "type": "object",
+                    "properties": {
+                        "Type": {
+                            "type": "string",
+                            "const": "AWS::EC2::SubnetRouteTableAssociation"
+                        },
+                        "Properties": {
+                            "type": "object"
+                        }
+                    }
+                }
+            },
+            "type": "object",
+            "additionalProperties": false
+        }
+    },
+    "additionalProperties": true
+}

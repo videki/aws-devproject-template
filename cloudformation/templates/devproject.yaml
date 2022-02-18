@@ -1,0 +1,203 @@
+---
+
+# cfn-lint -t devproject.yaml  
+# aws s3 sync s3://devproject-cf-templates .
+
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Development project environment template. 
+  Note: then <StackName>-dev-infrastructure named S3 bucket, codecommit repository and the <StackName> managed policies have to be deleted manually, if the environment is purged.
+
+Resources:
+  DevVpc:
+    Type: "MyOrg::VPC::DevVpc::MODULE"
+    Properties:
+      Env: "dev"
+      VPCName: !Join
+        - ""
+        - - !Ref "AWS::StackName"
+          - "-dev"
+
+  InfraS3Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      BucketName: !Join
+        - ""
+        - - !Ref "AWS::StackName"
+          - "-dev"
+          - "-infrastructure"
+      Tags:
+        - Key: "project"
+          Value: !Sub "${AWS::StackName}"
+    DeletionPolicy: "Retain"
+    UpdateReplacePolicy: "Retain"
+    DependsOn:
+      - DevVpc
+
+  InfrastructureRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: !Join
+        - ""
+        - - !Ref "AWS::StackName"
+          - "-dev"
+          - "-infrastructure"
+      RepositoryDescription: !Sub "${AWS::StackName} infrastructure repository."
+      Tags:
+        - Key: "project"
+          Value: !Sub "${AWS::StackName}"
+
+  Cloud9IAMGroupAdmin:
+    Type: AWS::IAM::Group
+    Properties: 
+      GroupName: !Sub "${AWS::Region}-${AWS::StackName}-admin"
+      Path: !Sub "/${AWS::StackName}/"
+
+  Cloud9IAMGroupUser:
+    Type: AWS::IAM::Group
+    Properties: 
+      GroupName: !Sub "${AWS::Region}-${AWS::StackName}-user"
+      Path: !Sub "/${AWS::StackName}/"
+
+  Cloud9AdminPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      ManagedPolicyName: !Sub "${AWS::Region}-${AWS::StackName}-cloud9-admin"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              -  "cloud9:*"
+              -  "iam:GetUser"
+              -  "iam:ListUsers"
+              -  "ec2:DescribeVpcs"
+              -  "ec2:DescribeSubnets"
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              -  "iam:CreateServiceLinkedRole"
+            Resource: '*'
+            Condition:
+              StringLike: 
+                "iam:AWSServiceName": "cloud9.amazonaws.com"
+          - Effect: Allow
+            Action:
+              -  "ssm:StartSession"
+            Resource: "arn:aws:ec2:*:*:instance/*"
+            Condition:
+              StringLike: 
+                "ssm:resourceTag/aws:cloud9:environment": "*"
+                "ec2:ResourceTag/project": "${AWS:StackName}"
+              StringEquals: 
+                "aws:CalledViaFirst": "cloud9.amazonaws.com"
+          - Effect: Allow
+            Action:
+              -  "ssm:StartSession"
+            Resource: "arn:aws:ssm:*:*:document/*"
+      Groups:
+        - !Ref Cloud9IAMGroupAdmin
+
+  Cloud9UserPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      ManagedPolicyName: !Sub "${AWS::Region}-${AWS::StackName}-cloud9-user"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - "cloud9:ValidateEnvironmentName"
+              - "cloud9:UpdateUserSettings"
+              - "cloud9:GetUserSettings"
+              - "iam:GetUser"
+              - "iam:ListUsers"
+              - "ec2:DescribeVpcs"
+              - "ec2:DescribeSubnets"
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - "cloud9:CreateEnvironmentEC2"
+              - "cloud9:CreateEnvironmentSSH"
+            Resource: '*'
+            Condition:
+              "Null": 
+                cloud9:OwnerArn: 
+                  - "true"
+          - Effect: Allow
+            Action:
+              - "cloud9:GetUserPublicKey"
+            Resource: '*'
+            Condition:
+              "Null": 
+                cloud9:UserArn: 
+                  - "true"
+          - Effect: Allow
+            Action:
+              - "cloud9:DescribeEnvironmentMemberships"
+            Resource: '*'
+            Condition:
+              "Null": 
+                cloud9:UserArn: 
+                  - "true"
+                cloud9:EnvironmentId: 
+                  - "true"
+          - Effect: Allow
+            Action:
+              - "iam:CreateServiceLinkedRole"
+            Resource: '*'
+            Condition:
+              StringLike: 
+                "iam:AWSServiceName": "cloud9.amazonaws.com"
+          - Effect: Allow
+            Action:
+              -  "ssm:StartSession"
+            Resource: "arn:aws:ec2:*:*:instance/*"
+            Condition:
+              StringLike: 
+                "ssm:resourceTag/aws:cloud9:environment": "*"
+                "ec2:ResourceTag/project": "${AWS:StackName}"
+              StringEquals: 
+                "aws:CalledViaFirst": "cloud9.amazonaws.com"
+          - Effect: Allow
+            Action:
+              -  "ssm:StartSession"
+            Resource: "arn:aws:ssm:*:*:document/*"
+      Groups:
+        - !Ref Cloud9IAMGroupUser
+
+Outputs:
+  IDESubnet:
+    Description: IDE subnet
+    Value: !Ref DevVpc.PublicSubnet0
+    Export:
+      Name: !Sub "${AWS::StackName}-ide-subnet"
+
+  RepositoryName:
+    Description: Infrastructure repository
+    Value: !Join
+        - ""
+        - - !Ref "AWS::StackName"
+          - "-dev"
+          - "-infrastructure"
+    Export:
+      Name: !Sub "${AWS::StackName}-infrastructure-repository"
+
+  InfrastructureRepositoryURL:
+    Description: Infrastructure repository
+    Value: !Sub 'https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/${AWS::StackName}-dev-infrastructure'
+    Export:
+      Name: !Sub "${AWS::StackName}-infrastructure-repository-url"
+
+  Cloud9IAMGroupAdmin:
+    Description: Cloud9 admin user group for the project
+    Value: !Sub "${AWS::Region}-${AWS::StackName}-admin"
+    Export:
+      Name: !Sub "${AWS::StackName}-iam-group-cloud9-admin"
+
+  Cloud9IAMGroupUser:
+    Description: Cloud9 user group for the project
+    Value: !Sub "${AWS::Region}-${AWS::StackName}-user"
+    Export:
+      Name: !Sub "${AWS::StackName}-iam-group-cloud9-user"
+
